@@ -1097,37 +1097,33 @@ const HC_SUPERVISORS = [
   { key:'GABRIELE', fullName:'Gabriele — Pós Vendas', badge:'badge-pink',  color:'#D4537E' },
 ];
 
-// Converte cabeçalho "DD/MM" ou "DD/MM\nDIA" → "YYYY-MM-DD" usando o ano corrente
+// Converte cabeçalho "DD/MM" ou "DD/MM SEXTA" → "YYYY-MM-DD"
 function hcColToISO(header) {
   if (!header) return '';
-  // Pega apenas a primeira linha caso venha "04/05\nSEGUNDA" e limpa espaços
-  const first = header.split('\n')[0].trim();
-  const m = first.match(/(\d{1,2})\/(\d{1,2})/);
+  const m = header.toString().match(/(\d{1,2})\/(\d{1,2})/);
   if (!m) return '';
   const year = new Date().getFullYear();
   return `${year}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
 }
 
-// Detecta se o valor da célula é PRESENTE, FALTA ou FALTA INJUSTIFICADA
-// Trata: espaços extras, reticências, underscores, acentos e qualquer variação de export
+// Detecta status da célula: presente / falta / falta_inj / null
+// Cobre dropdowns do Sheets que exportam com reticências: "FALTA INJ..."
 function hcStatus(val) {
-  if (val === null || val === undefined) return null;
-  // Remove caracteres não-alfabéticos do início e normaliza
+  if (!val) return null;
   const v = val.toString()
     .toUpperCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
-    .replace(/[^A-Z\s]/g, ' ')                         // remove pontuação/reticências
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   if (!v) return null;
-  if (v.includes('FALTA INJ') || v.includes('FALTA_INJ') || v.includes('INJUSTIFICADA')) return 'falta_inj';
-  if (v.startsWith('FALT') || v === 'FALTA') return 'falta';
+  if (v.includes('INJ') || v.includes('INJUSTIFICADA')) return 'falta_inj';
+  if (v.startsWith('FALT')) return 'falta';
   if (v.startsWith('PRES')) return 'presente';
   return null;
 }
 
-// Retorna todas as colunas de data presentes no CSV e seus ISOs
-// Ignora a primeira linha de dados se for linha de "dia da semana" (SEXTA, SABADO, etc.)
+// Retorna colunas com cabeçalho "DD/MM..." — cada uma é uma data
 function hcGetDateCols(rows) {
   if (!rows.length) return [];
   return Object.keys(rows[0])
@@ -1135,21 +1131,21 @@ function hcGetDateCols(rows) {
     .filter(c => c.iso);
 }
 
-// Filtra linhas de dados reais — ignora linhas que são cabeçalho secundário
-// (linha com "SEGUNDA", "TERÇA", etc. nos campos de data — linha de dia da semana)
-const WEEKDAY_NAMES = ['SEGUNDA','TERCA','TERÇA','QUARTA','QUINTA','SEXTA','SABADO','SÁBADO','DOMINGO'];
-function hcIsHeaderRow(row, dateCols) {
-  if (!dateCols.length) return false;
-  // Se todas as colunas de data contêm nomes de dias da semana, é linha de cabeçalho
-  const vals = dateCols.map(c => (row[c.col]||'').toUpperCase().trim());
-  const filledVals = vals.filter(v => v);
-  if (!filledVals.length) return false;
-  return filledVals.every(v => WEEKDAY_NAMES.some(wd => v.includes(wd)));
-}
-
-// Retorna datas únicas disponíveis no CSV (para popular o filtro)
+// Retorna datas únicas disponíveis (para popular o filtro)
 function hcAvailableDates(rows) {
   return [...new Set(hcGetDateCols(rows).map(c => c.iso))].sort().reverse();
+}
+
+// Verifica se a linha é linha de cabeçalho secundário (dia da semana)
+const WEEKDAY_NAMES = ['SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO','DOMINGO'];
+function hcIsWeekdayRow(row) {
+  const sup = (row['SUPERVISOR'] || Object.values(row)[0] || '').toString().toUpperCase().trim();
+  const col = (row['COLABORADOR'] || Object.values(row)[1] || '').toString().toUpperCase().trim();
+  // Linha de cabeçalho secundário: campos SUPERVISOR e COLABORADOR contêm os textos "SUPERVISOR"/"COLABORADOR"
+  // ou estão vazios e os campos de data contêm dias da semana
+  if (sup === 'SUPERVISOR' || col === 'COLABORADOR') return true;
+  if (WEEKDAY_NAMES.some(d => sup.includes(d) || col.includes(d))) return true;
+  return false;
 }
 
 // Lê a tabelinha lateral SUPERVISOR / HC FIXO do mesmo CSV
@@ -1181,54 +1177,69 @@ function buildHcFixoMap(rows) {
   return map; // { LUCAS: 5, VITORIA: 2, RICARDO: 9, GABRIELE: 3 }
 }
 
-// Dado o conjunto completo de hcRows e uma data ISO, calcula por supervisor:
-//   fixo      = HC FIXO da tabelinha lateral (ou contagem de linhas como fallback)
-//   presentes = nº com PRESENTE na data
-//   faltantes = nº com FALTA ou FALTA INJUSTIFICADA na data
-//   faltaInj  = nº com FALTA INJUSTIFICADA
-//   semRegistro = nº sem valor na data
+// buildHcData: dado um dateISO (ex: "2026-05-04"), conta por supervisor:
+//   presentes   = células VERDE  (PRESENTE)
+//   faltantes   = células VERMELHA (FALTA) + ROXA (FALTA INJUSTIFICADA)
+//   faltaInj    = células ROXA (FALTA INJUSTIFICADA)
+//   fixo        = valor da tabelinha HC FIXO (ou contagem de colaboradores)
 function buildHcData(dateISO) {
-  const result = {};
   const hcFixoMap = buildHcFixoMap(hcRows);
-
+  const result = {};
   HC_SUPERVISORS.forEach(s => {
-    result[s.key] = { fixo: hcFixoMap[s.key] || 0, presentes:0, faltantes:0, faltaInj:0, semRegistro:0, colaboradores:[] };
+    result[s.key] = {
+      fixo: hcFixoMap[s.key] || 0,
+      presentes: 0, faltantes: 0, faltaInj: 0, semRegistro: 0,
+      colaboradores: []
+    };
   });
 
-  // Achar a coluna que corresponde à data selecionada
-  const dateCols = hcGetDateCols(hcRows).filter(c => c.iso === dateISO).map(c => c.col);
+  // Colunas que correspondem à data selecionada (pode haver mais de uma por duplicata)
+  const allDateCols = hcGetDateCols(hcRows);
+  const targetCols  = dateISO
+    ? allDateCols.filter(c => c.iso === dateISO).map(c => c.col)
+    : [];
 
   hcRows.forEach(row => {
-    // Ignora linha de cabeçalho secundário (dias da semana: SEXTA, SEGUNDA, etc.)
-    if (hcIsHeaderRow(row, dateCols.length ? dateCols.map(c=>({col:c})) : hcGetDateCols(hcRows))) return;
+    // Pular linhas de cabeçalho secundário (dia da semana, etc.)
+    if (hcIsWeekdayRow(row)) return;
 
-    const supRaw = (row['SUPERVISOR'] || row['Supervisor'] ||
-      Object.values(row)[0] || '').toString().toUpperCase().trim();
+    // Identificar supervisor
+    const supRaw = (row['SUPERVISOR'] || row['Supervisor'] || Object.values(row)[0] || '')
+      .toString().toUpperCase().trim();
     if (!supRaw) return;
     const sup = HC_SUPERVISORS.find(s => supRaw.includes(s.key));
     if (!sup) return;
 
-    const colab = (row['COLABORADOR'] || row['Colaborador'] ||
-      Object.values(row)[1] || '').toString().trim();
+    // Identificar colaborador
+    const colab = (row['COLABORADOR'] || row['Colaborador'] || Object.values(row)[1] || '')
+      .toString().trim();
     if (!colab) return;
 
-    // Se não encontrou HC fixo na tabelinha, usa contagem de linhas como fallback
+    // Contar colaborador (fallback se HC FIXO não disponível)
     if (!hcFixoMap[sup.key]) result[sup.key].fixo++;
     result[sup.key].colaboradores.push(colab);
 
-    if (!dateCols.length) { result[sup.key].semRegistro++; return; }
+    // Se não há data selecionada, apenas registra sem contar presença
+    if (!targetCols.length) { result[sup.key].semRegistro++; return; }
 
+    // Ler o status da célula da data selecionada
     let status = null;
-    for (const col of dateCols) {
-      const raw = row[col];
-      status = hcStatus(raw);
+    for (const col of targetCols) {
+      status = hcStatus(row[col]);
       if (status) break;
     }
 
-    if (status === 'presente')       result[sup.key].presentes++;
-    else if (status === 'falta')     result[sup.key].faltantes++;
-    else if (status === 'falta_inj') { result[sup.key].faltantes++; result[sup.key].faltaInj++; }
-    else                             result[sup.key].semRegistro++;
+    // Contar conforme a cor/status
+    if (status === 'presente') {
+      result[sup.key].presentes++;                          // verde
+    } else if (status === 'falta_inj') {
+      result[sup.key].faltantes++;                          // roxo conta como falta também
+      result[sup.key].faltaInj++;                           // roxo
+    } else if (status === 'falta') {
+      result[sup.key].faltantes++;                          // vermelho
+    } else {
+      result[sup.key].semRegistro++;
+    }
   });
 
   return result;
@@ -1445,18 +1456,19 @@ function loadHcData(silent) {
       hcRows = results.data;
       if (hcRows.length > 0) {
         const _dateCols = hcGetDateCols(hcRows);
-        console.log('[HC] Colunas de data:', _dateCols.map(c => c.col + ' -> ' + c.iso));
+        console.log('[HC] Total linhas CSV:', hcRows.length);
+        console.log('[HC] Colunas de data detectadas:', _dateCols.map(c => '"' + c.col + '" → ' + c.iso));
         console.log('[HC] hcFixoMap:', buildHcFixoMap(hcRows));
-        // Amostra de valores de status para debug
-        const _sample = hcRows.find(r => {
-          const s = (r['SUPERVISOR']||Object.values(r)[0]||'').toString().toUpperCase().trim();
-          return s && s !== 'SUPERVISOR' && !WEEKDAY_NAMES.some(w => s.includes(w));
+        // Log de cada linha com supervisor válido e seu status na 1ª coluna de data
+        const _firstDateCol = _dateCols[0];
+        hcRows.slice(0, 30).forEach((r, i) => {
+          const sup = (r['SUPERVISOR'] || Object.values(r)[0] || '').toString().trim();
+          const col = (r['COLABORADOR'] || Object.values(r)[1] || '').toString().trim();
+          if (!sup || !col) return;
+          const statusVal = _firstDateCol ? r[_firstDateCol.col] : '—';
+          const statusParsed = _firstDateCol ? hcStatus(statusVal) : '—';
+          console.log(`[HC] linha ${i}: SUP="${sup}" COL="${col}" | ${_firstDateCol?.col}="${statusVal}" → ${statusParsed}`);
         });
-        if (_sample && _dateCols.length) {
-          console.log('[HC] Amostra status:', _dateCols.slice(0,5).map(c =>
-            '"' + c.col + '": "' + _sample[c.col] + '" -> ' + hcStatus(_sample[c.col])
-          ));
-        }
       }
       // Popular filtro de data com as datas das colunas disponíveis
       const dates = hcAvailableDates(hcRows);
