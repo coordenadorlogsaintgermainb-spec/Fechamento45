@@ -346,7 +346,7 @@
 
   <!-- ── ÁREA HC DO DIA ── -->
   <div class="area-page" id="page-hcdia">
-    <div class="tab-panel active" id="panel-hc-diario">
+    <div class="tab-panel" id="panel-hc-diario">
       <div class="grids" id="grids-hc-diario">
         <div class="skeleton"></div><div class="skeleton"></div>
         <div class="skeleton"></div><div class="skeleton"></div>
@@ -366,7 +366,7 @@
         <div class="skeleton"></div><div class="skeleton"></div>
       </div>
     </div>
-    <div class="tab-panel" id="panel-hc-tabela">
+    <div class="tab-panel active" id="panel-hc-tabela">
       <div id="hc-tabela-container"></div>
     </div>
   </div>
@@ -588,6 +588,21 @@ function drawChart(key, items, sup) {
   if (charts[key]) charts[key].destroy();
   const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
   const tick   = isDark ? '#9b9b97' : '#888780';
+
+  const datalabelsPlugin = {
+    id: 'datalabels-' + key,
+    afterDatasetsDraw(ch) {
+      const c2 = ch.ctx;
+      c2.save(); c2.font = '500 10px sans-serif'; c2.fillStyle = sup.color; c2.textAlign = 'left'; c2.textBaseline = 'middle';
+      ch.data.datasets.forEach((ds, di) => {
+        ch.getDatasetMeta(di).data.forEach((bar, bi) => {
+          if (ds.data[bi] > 0) { const p = bar.getProps(['x','y'], true); c2.fillText(fmt(ds.data[bi]), p.x + 4, p.y); }
+        });
+      });
+      c2.restore();
+    }
+  };
+
   charts[key] = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -595,23 +610,14 @@ function drawChart(key, items, sup) {
       datasets: [{ label: sup.colLabel, data: items.map(i => i.val),
         backgroundColor: sup.color + '28', borderColor: sup.color, borderWidth: 1.5, borderRadius: 4 }]
     },
+    plugins: [datalabelsPlugin],
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
       plugins: { legend:{display:false}, tooltip:{callbacks:{label: c => fmt(c.raw)}} },
       scales: {
         x: { ticks:{font:{size:10},color:tick,callback:v=>fmt(v)}, grid:{color:isDark?'rgba(255,255,255,0.07)':'rgba(136,135,128,0.12)'} },
         y: { ticks:{font:{size:10},color:tick,autoSkip:false}, grid:{display:false} }
-      },
-      plugins: [{ id:'datalabels-'+key, afterDatasetsDraw(ch) {
-        const c2=ch.ctx;
-        c2.save(); c2.font='500 10px sans-serif'; c2.fillStyle=sup.color; c2.textAlign='left'; c2.textBaseline='middle';
-        ch.data.datasets.forEach((ds,di) => {
-          ch.getDatasetMeta(di).data.forEach((bar,bi) => {
-            if (ds.data[bi]>0) { const p=bar.getProps(['x','y'],true); c2.fillText(fmt(ds.data[bi]),p.x+4,p.y); }
-          });
-        });
-        c2.restore();
-      }}]
+      }
     }
   });
 }
@@ -880,7 +886,7 @@ const perfMetaPlugin = {
   id: 'perfMetaPlugin',
   afterDraw(chart) {
     const { ctx, scales: { x, y }, data } = chart;
-    const META_VAL = chart.options._meta || META;
+    const META_VAL = (chart.config && chart.config.options && chart.config.options._meta) || META;
 
     // ── Linha de meta ──
     const yMeta = y.getPixelForValue(META_VAL);
@@ -1619,7 +1625,6 @@ function renderHcDiarioGrid(dateISO) {
 }
 
 function renderHcDiario(dateISO) {
-  if (currentTab.hcdia !== 'diario') return;
   renderHcDiarioGrid(dateISO);
 }
 function renderHcSemanal(wk) {
@@ -1844,6 +1849,53 @@ function renderHcTabela() {
     </div>`;
   container.appendChild(banner);
 
+  // ── Gráficos por supervisor (TOPO — antes da tabela) ──
+  const chartsGrid = document.createElement('div');
+  chartsGrid.className = 'presenca-charts';
+  HC_SUPERVISORS.forEach((sup, si) => {
+    if (!(colabs[sup.key]||[]).length) return;
+    const fixo = hcFixoMap[sup.key] || (colabs[sup.key]||[]).length;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-header" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="sup-badge ${sup.badge}">${sup.key}</span>
+          <span class="card-name">${sup.fullName}</span>
+        </div>
+        <span style="font-size:11px;color:var(--text-tertiary)">HC Fixo: <strong style="color:${sup.color}">${fixo}</strong></span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+        <div style="width:110px;height:110px;flex-shrink:0;position:relative">
+          <canvas id="tabchart-${si}" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.06em">HC</div>
+            <div style="font-size:22px;font-weight:800;color:${sup.color};line-height:1">${fixo}</div>
+          </div>
+        </div>
+        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="padding:8px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.35);border-radius:8px;text-align:center">
+            <div id="tabcard-pres-${si}" style="font-size:22px;font-weight:800;color:#4ade80;line-height:1">0</div>
+            <div style="font-size:9px;font-weight:700;color:rgba(74,222,128,0.8);text-transform:uppercase;margin-top:3px">Presentes</div>
+          </div>
+          <div style="padding:8px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.35);border-radius:8px;text-align:center">
+            <div id="tabcard-falt-${si}" style="font-size:22px;font-weight:800;color:#f87171;line-height:1">0</div>
+            <div style="font-size:9px;font-weight:700;color:rgba(248,113,113,0.8);text-transform:uppercase;margin-top:3px">Faltantes</div>
+          </div>
+          <div style="padding:8px;background:rgba(192,132,252,0.08);border:1px solid rgba(192,132,252,0.35);border-radius:8px;text-align:center">
+            <div id="tabcard-inj-${si}" style="font-size:22px;font-weight:800;color:#c084fc;line-height:1">0</div>
+            <div style="font-size:9px;font-weight:700;color:rgba(192,132,252,0.8);text-transform:uppercase;margin-top:3px">F. Injust.</div>
+          </div>
+          <div style="padding:8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;text-align:center">
+            <div id="tabcard-pct-${si}" style="font-size:22px;font-weight:800;color:var(--text);line-height:1">—</div>
+            <div style="font-size:9px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;margin-top:3px">% presença</div>
+          </div>
+        </div>
+      </div>`;
+    chartsGrid.appendChild(card);
+  });
+  container.appendChild(chartsGrid);
+
   // ── Tabela ──
   const tableWrap = document.createElement('div');
   tableWrap.className = 'card presenca-wrap';
@@ -1913,53 +1965,6 @@ function renderHcTabela() {
       </tfoot>
     </table>`;
   container.appendChild(tableWrap);
-
-  // ── Gráficos por supervisor ──
-  const chartsGrid = document.createElement('div');
-  chartsGrid.className = 'presenca-charts';
-  HC_SUPERVISORS.forEach((sup, si) => {
-    if (!(colabs[sup.key]||[]).length) return;
-    const fixo = hcFixoMap[sup.key] || (colabs[sup.key]||[]).length;
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `
-      <div class="card-header" style="justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="sup-badge ${sup.badge}">${sup.key}</span>
-          <span class="card-name">${sup.fullName}</span>
-        </div>
-        <span style="font-size:11px;color:var(--text-tertiary)">HC Fixo: <strong style="color:${sup.color}">${fixo}</strong></span>
-      </div>
-      <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
-        <div style="width:110px;height:110px;flex-shrink:0;position:relative">
-          <canvas id="tabchart-${si}" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
-          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
-            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.06em">HC</div>
-            <div style="font-size:22px;font-weight:800;color:${sup.color};line-height:1">${fixo}</div>
-          </div>
-        </div>
-        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          <div style="padding:8px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.35);border-radius:8px;text-align:center">
-            <div id="tabcard-pres-${si}" style="font-size:22px;font-weight:800;color:#4ade80;line-height:1">0</div>
-            <div style="font-size:9px;font-weight:700;color:rgba(74,222,128,0.8);text-transform:uppercase;margin-top:3px">Presentes</div>
-          </div>
-          <div style="padding:8px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.35);border-radius:8px;text-align:center">
-            <div id="tabcard-falt-${si}" style="font-size:22px;font-weight:800;color:#f87171;line-height:1">0</div>
-            <div style="font-size:9px;font-weight:700;color:rgba(248,113,113,0.8);text-transform:uppercase;margin-top:3px">Faltantes</div>
-          </div>
-          <div style="padding:8px;background:rgba(192,132,252,0.08);border:1px solid rgba(192,132,252,0.35);border-radius:8px;text-align:center">
-            <div id="tabcard-inj-${si}" style="font-size:22px;font-weight:800;color:#c084fc;line-height:1">0</div>
-            <div style="font-size:9px;font-weight:700;color:rgba(192,132,252,0.8);text-transform:uppercase;margin-top:3px">F. Injust.</div>
-          </div>
-          <div style="padding:8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;text-align:center">
-            <div id="tabcard-pct-${si}" style="font-size:22px;font-weight:800;color:var(--text);line-height:1">—</div>
-            <div style="font-size:9px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;margin-top:3px">% presença</div>
-          </div>
-        </div>
-      </div>`;
-    chartsGrid.appendChild(card);
-  });
-  container.appendChild(chartsGrid);
 
   // Aguarda DOM e renderiza charts + totais
   setTimeout(() => {
