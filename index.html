@@ -286,10 +286,7 @@
 
 <!-- Abas HC DO DIA -->
 <div class="tabs-bar" id="tabs-hcdia">
-  <button class="tab-btn active" data-area="hcdia" data-tab="diario">Diário</button>
-  <button class="tab-btn"        data-area="hcdia" data-tab="semanal">Semanal</button>
-  <button class="tab-btn"        data-area="hcdia" data-tab="mensal">Mensal</button>
-  <button class="tab-btn"        data-area="hcdia" data-tab="tabela">Tabela de Presença</button>
+  <button class="tab-btn active" data-area="hcdia" data-tab="tabela">Head Count</button>
 </div>
 
 <!-- ══════════ PAGE ══════════ -->
@@ -421,7 +418,7 @@ const charts = {};
 let allRows = [];
 let hcRows  = [];
 let currentArea = 'fechamento';
-const currentTab = { fechamento: 'diario', performance: 'diario', hcdia: 'diario' };
+const currentTab = { fechamento: 'diario', performance: 'diario', hcdia: 'tabela' };
 const hcCharts = {};
 
 // ─────────────────────────────────────────────
@@ -667,9 +664,26 @@ const PERF_HOURS = [
   '08-09','09-10','10-11','11-12','12-13','13-14','14-15','15-16','16-17','17-18','18-19','19-20','20-21','21-22'
 ];
 const PERF_COLS = [
-  '08 - 09 hrs','09 AS 10 hrs:','10 as 11 hrs:','11 as 12 hrs:','12 as 13 hrs:',
-  '13 as 14 hrs:','14 as 15 hrs:','15 as 16 hrs:','16 as 17 hrs:','17 as 18 hrs:',
-  '18 as 19 hrs:','19 as 20 hrs:','20 as 21 hrs:','21 as 22 hrs:'
+  '08 - 09 hrs:','09 - 10 hrs:','10 - 11 hrs:','11 - 12 hrs:','12 - 13 hrs:',
+  '13 - 14 hrs:','14 - 15 hrs:','15 - 16 hrs:','16 - 17 hrs:','17 - 18 hrs:',
+  '18 - 19 hrs:','19 - 20 hrs:','20 - 21 hrs:','21 - 22 hrs:'
+];
+// Aliases alternativos para cada coluna (mesma ordem que PERF_COLS)
+const PERF_COLS_ALIASES = [
+  ['08 - 09 hrs','08-09 hrs','08 as 09 hrs:','08 as 09 hrs'],
+  ['09 - 10 hrs','09-10 hrs','09 as 10 hrs:','09 as 10 hrs','09 AS 10 hrs:'],
+  ['10 - 11 hrs','10-11 hrs','10 as 11 hrs:','10 as 11 hrs'],
+  ['11 - 12 hrs','11-12 hrs','11 as 12 hrs:','11 as 12 hrs'],
+  ['12 - 13 hrs','12-13 hrs','12 as 13 hrs:','12 as 13 hrs'],
+  ['13 - 14 hrs','13-14 hrs','13 as 14 hrs:','13 as 14 hrs'],
+  ['14 - 15 hrs','14-15 hrs','14 as 15 hrs:','14 as 15 hrs'],
+  ['15 - 16 hrs','15-16 hrs','15 as 16 hrs:','15 as 16 hrs'],
+  ['16 - 17 hrs','16-17 hrs','16 as 17 hrs:','16 as 17 hrs'],
+  ['17 - 18 hrs','17-18 hrs','17 as 18 hrs:','17 as 18 hrs'],
+  ['18 - 19 hrs','18-19 hrs','18 as 19 hrs:','18 as 19 hrs'],
+  ['19 - 20 hrs','19-20 hrs','19 as 20 hrs:','19 as 20 hrs'],
+  ['20 - 21 hrs','20-21 hrs','20 as 21 hrs:','20 as 21 hrs'],
+  ['21 - 22 hrs','21-22 hrs','21 as 22 hrs:','21 as 22 hrs'],
 ];
 
 let perfRows = [];
@@ -700,32 +714,73 @@ function perfNormCol(col) {
   return col.toLowerCase().replace(/[^a-z0-9\s\-]/g,'').replace(/\s+/g,' ').trim();
 }
 
+// Pre-build a digits-only key from a column name e.g. "09 - 10 hrs:" → "09-10"
+function _colDigitKey(s) {
+  const nums = s.match(/\d+/g);
+  return nums && nums.length >= 2 ? nums[0] + '-' + nums[1] : '';
+}
+// Build digit-key → actual row key map once per row set
+let _perfDigitMap = null;
+let _perfDigitMapSig = null;
+function _buildDigitMap(row) {
+  const sig = Object.keys(row).join('|');
+  if (_perfDigitMapSig === sig) return;
+  _perfDigitMapSig = sig;
+  _perfDigitMap = {};
+  Object.keys(row).forEach(k => {
+    const dk = _colDigitKey(k);
+    if (dk && !_perfDigitMap[dk]) _perfDigitMap[dk] = k;
+  });
+}
+
 function perfGv(row, col) {
-  // Match exato
+  // 1. Match exato
   let raw = row[col];
   if (raw !== undefined && raw !== null && raw !== '') {
     const x = parseFloat(raw.toString().replace(',','.'));
-    return isNaN(x) ? 0 : x;
+    if (!isNaN(x)) return x;
   }
-  // Match normalizado
+
+  // 2. Match normalizado (remove pontuação)
   perfBuildColCache(row);
   const norm = perfNormCol(col);
   const found = _perfColCache[norm];
   if (found) raw = row[found];
   if (raw !== undefined && raw !== null && raw !== '') {
     const x = parseFloat(raw.toString().replace(',','.'));
-    return isNaN(x) ? 0 : x;
+    if (!isNaN(x)) return x;
   }
-  // Match ainda mais tolerante: ignora espaços e "AS", "A" entre horas
-  // ex: "09 AS 10 hrs:" → "09 10" vs "09-10 hrs" → "09 10"
-  const colDigits = col.replace(/[^0-9]/g,' ').trim().replace(/\s+/g,'-');
-  const colFoundKey = Object.keys(row).find(k => {
-    const kd = k.replace(/[^0-9]/g,' ').trim().replace(/\s+/g,'-');
-    return kd === colDigits && kd.length > 1;
-  });
-  if (colFoundKey) raw = row[colFoundKey];
-  const x = parseFloat((raw||'').toString().replace(',','.'));
-  return isNaN(x) ? 0 : x;
+
+  // 3. Match por aliases definidos em PERF_COLS_ALIASES
+  const colIdx = PERF_COLS.indexOf(col);
+  if (colIdx >= 0) {
+    for (const alias of (PERF_COLS_ALIASES[colIdx] || [])) {
+      raw = row[alias];
+      if (raw !== undefined && raw !== null && raw !== '') {
+        const x = parseFloat(raw.toString().replace(',','.'));
+        if (!isNaN(x)) return x;
+      }
+      // também alias normalizado
+      const aliasNorm = perfNormCol(alias);
+      const aliasFound = _perfColCache[aliasNorm];
+      if (aliasFound) raw = row[aliasFound];
+      if (raw !== undefined && raw !== null && raw !== '') {
+        const x = parseFloat(raw.toString().replace(',','.'));
+        if (!isNaN(x)) return x;
+      }
+    }
+  }
+
+  // 4. Match por dígitos: "09-10" corresponde a qualquer coluna com esses dois números
+  _buildDigitMap(row);
+  const dk = _colDigitKey(col);
+  if (dk && _perfDigitMap[dk]) {
+    raw = row[_perfDigitMap[dk]];
+    const x = parseFloat((raw||'').toString().replace(',','.'));
+    if (!isNaN(x)) return x;
+  }
+
+  return 0;
 }
 
 function perfToISO(ds) {
@@ -1196,6 +1251,9 @@ function loadPerfData(silent) {
         console.log('[PERF] Leitura das colunas de hora (perfGv):', 
           PERF_COLS.map(c => c + ' → ' + perfGv(_r0, c))
         );
+        // Mostrar mapa de dígitos construído
+        _buildDigitMap(_r0);
+        console.log('[PERF] Digit map:', JSON.stringify(_perfDigitMap));
         // Mostrar colunas da planilha que contêm números (candidatas a horas)
         const _numCols = Object.keys(_r0).filter(k => {
           const v = parseFloat((_r0[k]||'').toString().replace(',','.'));
