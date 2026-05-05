@@ -137,6 +137,66 @@
   @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .no-data { font-size: 13px; color: var(--text-tertiary); padding: 3rem 0; text-align: center; grid-column: 1/-1; }
   .footer { text-align: center; font-size: 11px; color: var(--text-tertiary); margin-top: 2rem; }
+
+  /* ── TABELA DE PRESENÇA ── */
+  .presenca-wrap { overflow-x: auto; }
+  .presenca-table { border-collapse: collapse; font-size: 12px; width: 100%; }
+  .presenca-table th, .presenca-table td { border: 0.5px solid var(--border-md); padding: 0; white-space: nowrap; }
+  .presenca-table thead th { background: var(--bg-secondary); font-size: 11px; font-weight: 600; color: var(--text-secondary); padding: 5px 10px; text-align: center; }
+  .presenca-table thead th.col-sup { text-align: left; padding-left: 10px; }
+  .presenca-table thead th.col-col { text-align: left; padding-left: 10px; }
+  .presenca-table thead th.th-date { min-width: 130px; }
+  .presenca-table tbody .sup-cell { font-size: 11px; font-weight: 700; color: var(--text); padding: 0 10px; vertical-align: middle; }
+  .presenca-table tbody .col-cell { font-size: 12px; color: var(--text); padding: 0 10px; vertical-align: middle; min-width: 110px; }
+  .presenca-table tbody tr:hover td { background: var(--bg-secondary); }
+  .presenca-table tbody tr { height: 36px; }
+
+  /* Dropdowns de presença */
+  .status-select {
+    appearance: none; -webkit-appearance: none;
+    border: none; outline: none; cursor: pointer;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+    padding: 5px 28px 5px 10px; width: 100%; height: 36px;
+    background-repeat: no-repeat; background-position: right 8px center;
+    background-size: 10px; text-transform: uppercase;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.5)'/%3E%3C/svg%3E");
+    transition: filter 0.15s;
+  }
+  .status-select.s-presente   { background-color: #15803d; color: #fff; }
+  .status-select.s-falta      { background-color: #b91c1c; color: #fff; }
+  .status-select.s-falta-inj  { background-color: #6d28d9; color: #fff; }
+  .status-select.s-vazio      { background-color: var(--bg-secondary); color: var(--text-tertiary); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(100,100,100,0.5)'/%3E%3C/svg%3E"); }
+  .status-select:hover { filter: brightness(1.1); }
+
+  /* Linha de totais */
+  .presenca-table tfoot td { background: var(--bg-secondary); font-weight: 700; font-size: 11px; padding: 5px 10px; text-align: center; border-top: 1px solid var(--border-md); }
+  .presenca-table tfoot .tot-pres  { color: #4ade80; }
+  .presenca-table tfoot .tot-falta { color: #f87171; }
+  .presenca-table tfoot .tot-inj   { color: #c084fc; }
+  .presenca-table tfoot .tot-label { text-align: left; font-size: 10px; color: var(--text-tertiary); }
+
+  /* Charts de presença */
+  .presenca-charts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px; }
+  @media (max-width: 680px) { .presenca-charts { grid-template-columns: 1fr; } }
+  .presenca-summary-banner {
+    grid-column: 1/-1; background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1rem 1.5rem;
+    display: flex; gap: 24px; flex-wrap: wrap; align-items: center; margin-bottom: 4px;
+  }
+  .pres-total-block { min-width: 140px; border-right: 0.5px solid var(--border); padding-right: 24px; }
+  .pres-total-num { font-size: 42px; font-weight: 800; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; }
+  .pres-total-label { font-size: 10px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .pres-counters { display: flex; gap: 20px; flex-wrap: wrap; }
+  .pres-counter { text-align: center; }
+  .pres-counter .num { font-size: 28px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .pres-counter .lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 3px; }
+  .pres-counter.verde .num { color: #4ade80; } .pres-counter.verde .lbl { color: rgba(74,222,128,0.8); }
+  .pres-counter.vermelho .num { color: #f87171; } .pres-counter.vermelho .lbl { color: rgba(248,113,113,0.8); }
+  .pres-counter.roxo .num { color: #c084fc; } .pres-counter.roxo .lbl { color: rgba(192,132,252,0.8); }
+  .divider-v { width: 0.5px; height: 40px; background: var(--border); }
+
+  /* Sup separator row */
+  .row-sup-header td { background: var(--bg-secondary) !important; }
 </style>
 </head>
 <body>
@@ -203,6 +263,9 @@
         <select class="ctrl-select" id="hc-month-filter"></select>
       </div>
       <button class="btn" id="hc-btn-refresh"><span class="icon">↻</span> Atualizar</button>
+      <div class="tab-controls" id="hctrl-hc-tabela" style="align-items:center;gap:8px">
+        <span class="ctrl-label">Tabela interativa</span>
+      </div>
     </div>
   </div>
 </div>
@@ -226,6 +289,7 @@
   <button class="tab-btn active" data-area="hcdia" data-tab="diario">Diário</button>
   <button class="tab-btn"        data-area="hcdia" data-tab="semanal">Semanal</button>
   <button class="tab-btn"        data-area="hcdia" data-tab="mensal">Mensal</button>
+  <button class="tab-btn"        data-area="hcdia" data-tab="tabela">Tabela de Presença</button>
 </div>
 
 <!-- ══════════ PAGE ══════════ -->
@@ -304,6 +368,9 @@
         <div class="skeleton"></div><div class="skeleton"></div>
         <div class="skeleton"></div><div class="skeleton"></div>
       </div>
+    </div>
+    <div class="tab-panel" id="panel-hc-tabela">
+      <div id="hc-tabela-container"></div>
     </div>
   </div>
 
@@ -803,6 +870,67 @@ const perfMetaPlugin = {
 
 // perfMetaPlugin é usado apenas via plugins: [] local no drawPerfChart, não registrado globalmente
 
+// ── Gráfico comparativo: todas as linhas de produção no mesmo chart ──
+function drawPerfComparativeChart(cKey, allLinesData) {
+  const ctx = document.getElementById(`perfchart-${cKey}`);
+  if (!ctx) return;
+  if (perfCharts[cKey]) { perfCharts[cKey].destroy(); delete perfCharts[cKey]; }
+
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const tickC  = isDark ? '#9b9b97' : '#888780';
+  const gridC  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(136,135,128,0.12)';
+  const textC  = isDark ? '#f0efe8' : '#1a1a1a';
+
+  const datasets = FIXED_LINES.map((linhaName, li) => {
+    const lineData = allLinesData[linhaName] || { totals: new Array(14).fill(0) };
+    const color = FIXED_LINE_COLORS[li];
+    return {
+      label: linhaName,
+      data: lineData.totals,
+      backgroundColor: color + '55',
+      borderColor: color,
+      borderWidth: 1.5,
+      borderRadius: 3,
+    };
+  });
+
+  perfCharts[cKey] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: PERF_HOURS, datasets },
+    plugins: [perfMetaPlugin],
+    options: {
+      _meta: META,
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { color: textC, font: { size: 11 }, boxWidth: 12, padding: 10 }
+        },
+        tooltip: {
+          callbacks: {
+            label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)} itens`
+          }
+        }
+      },
+      layout: { padding: { top: 18 } },
+      scales: {
+        x: {
+          ticks: { color: tickC, font: { size: 10 } },
+          grid: { color: gridC }
+        },
+        y: {
+          ticks: { color: tickC, font: { size: 10 }, callback: v => fmt(v) },
+          grid: { color: gridC },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+// ── Gráfico individual por linha (colaboradores) ──
 function drawPerfChart(cKey, lineData, lineColor) {
   const ctx = document.getElementById(`perfchart-${cKey}`);
   if (!ctx) return;
@@ -814,8 +942,7 @@ function drawPerfChart(cKey, lineData, lineColor) {
 
   const colaboradores = Object.entries(lineData.colaboradores);
 
-  // Para cada colaborador, montar cores condicionais por barra
-  const datasets = colaboradores.map(([nome, hrs], ci) => {
+  const datasets = colaboradores.map(([nome, hrs]) => {
     const bgColors  = hrs.map(v => v >= META ? 'rgba(74,222,128,0.55)'  : v > 0 ? 'rgba(248,113,113,0.55)'  : 'rgba(120,120,120,0.15)');
     const brdColors = hrs.map(v => v >= META ? 'rgba(74,222,128,1)'     : v > 0 ? 'rgba(248,113,113,1)'     : 'rgba(120,120,120,0.3)');
     return {
@@ -828,8 +955,6 @@ function drawPerfChart(cKey, lineData, lineColor) {
     };
   });
 
-  // Se só 1 colaborador e quiser mostrar totais, os totals já são os hrs dele
-  // Se múltiplos, adicionar dataset de totais como linha sobreposta
   if (colaboradores.length > 1) {
     const bgColors  = lineData.totals.map(v => v >= META ? 'rgba(74,222,128,0.55)'  : v > 0 ? 'rgba(248,113,113,0.55)'  : 'rgba(120,120,120,0.15)');
     const brdColors = lineData.totals.map(v => v >= META ? 'rgba(74,222,128,1)'     : v > 0 ? 'rgba(248,113,113,1)'     : 'rgba(120,120,120,0.3)');
@@ -865,15 +990,11 @@ function drawPerfChart(cKey, lineData, lineColor) {
       },
       layout: { padding: { top: 18 } },
       scales: {
-        x: {
-          ticks: { color: tickC, font: { size: 10 } },
-          grid: { color: gridC }
-        },
+        x: { ticks: { color: tickC, font: { size: 10 } }, grid: { color: gridC } },
         y: {
           ticks: { color: tickC, font: { size: 10 }, callback: v => fmt(v) },
           grid: { color: gridC },
-          beginAtZero: true,
-          title: { display: false }
+          beginAtZero: true
         }
       }
     }
@@ -889,64 +1010,89 @@ function renderPerfGrid(rows, gridId, chartPrefix) {
   const lineMap = {};
   buildPerfByLine(rows).forEach(ld => { lineMap[ld.linha.toUpperCase()] = ld; });
 
-  // Verificar se chegou algum dado real
-  const hasAnyData = Object.keys(lineMap).length > 0;
+  // ── Card 1: Gráfico comparativo — todas as linhas juntas ──
+  const compCard = document.createElement('div');
+  compCard.className = 'card';
+  compCard.style.cssText = 'grid-column:1/-1';
+  const compKey = `${chartPrefix}-comp`;
 
-  // Sempre renderizar as 4 linhas fixas
+  const totalGeral = FIXED_LINES.reduce((s, ln) => {
+    const ld = lineMap[ln];
+    return s + (ld ? ld.totals.reduce((a,b) => a+b, 0) : 0);
+  }, 0);
+
+  // Mini badges de totais por linha
+  const linhasBadge = FIXED_LINES.map((ln, li) => {
+    const ld = lineMap[ln];
+    const tot = ld ? ld.totals.reduce((a,b)=>a+b,0) : 0;
+    return `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;">
+      <span class="sup-badge ${FIXED_LINE_BADGES[li]}" style="font-size:10px;padding:2px 7px">${ln}</span>
+      <span style="font-weight:700;color:${FIXED_LINE_COLORS[li]};font-variant-numeric:tabular-nums">${fmt(tot)}</span>
+    </span>`;
+  }).join('');
+
+  compCard.innerHTML = `
+    <div class="card-header" style="justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+      <div>
+        <span class="card-title">Performance por Linha de Produção</span>
+        <div class="card-sub">Comparativo de volume por hora · Meta: ${META} itens/h</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${linhasBadge}</div>
+    </div>
+    <div class="chart-wrap" style="position:relative;height:300px;margin-top:6px">
+      <canvas id="perfchart-${compKey}"></canvas>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:7px 10px;background:var(--bg-secondary);border-radius:var(--radius-md);border:0.5px solid var(--border)">
+      <span style="font-size:10px;color:var(--text-secondary);font-weight:500;text-transform:uppercase;letter-spacing:0.08em">Total geral itens preparados</span>
+      <span style="font-size:17px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums">${fmt(totalGeral)}</span>
+    </div>`;
+  grids.appendChild(compCard);
+  setTimeout(() => drawPerfComparativeChart(compKey, lineMap), 60);
+
+  // ── Cards individuais: 1 por linha de produção ──
   FIXED_LINES.forEach((linhaName, li) => {
     const lineData = lineMap[linhaName] || {
       linha: linhaName, colaboradores: {}, totals: new Array(14).fill(0)
     };
 
     const colaboradores = Object.entries(lineData.colaboradores);
-    const totalGeral = lineData.totals.reduce((a,b) => a+b, 0);
+    const totalLinha = lineData.totals.reduce((a,b) => a+b, 0);
     const cKey = `${chartPrefix}-${li}`;
     const lineColor = FIXED_LINE_COLORS[li];
     const badge = FIXED_LINE_BADGES[li];
 
-    // Nome do colaborador (flutuante — pode ser vários ou nenhum)
     const nomeColaborador = colaboradores.length === 1
       ? colaboradores[0][0]
       : colaboradores.length > 1
         ? colaboradores.map(([n]) => n).join(' / ')
         : '—';
 
+    const horasComDado = lineData.totals.filter(v => v > 0);
+    const horasDentro  = lineData.totals.filter(v => v >= META).length;
+    const horasFora    = lineData.totals.filter(v => v > 0 && v < META).length;
+    const pctDentro    = horasComDado.length > 0 ? Math.round((horasDentro / horasComDado.length) * 100) : 0;
+
     const card = document.createElement('div');
     card.className = 'card';
-
-    // Calcular horas dentro/fora da meta (apenas horas com registro > 0)
-    const horasComDado  = lineData.totals.filter(v => v > 0);
-    const horasDentro   = lineData.totals.filter(v => v >= META).length;
-    const horasFora     = lineData.totals.filter(v => v > 0 && v < META).length;
-    const pctDentro     = horasComDado.length > 0 ? Math.round((horasDentro / horasComDado.length) * 100) : 0;
-
     card.innerHTML = `
       <div class="card-header" style="justify-content:space-between;align-items:flex-start">
         <div style="display:flex;align-items:center;gap:8px">
           <span class="sup-badge ${badge}" style="white-space:nowrap">${linhaName}</span>
           <span class="card-name" style="font-size:13px;color:var(--text-secondary)">${nomeColaborador}</span>
         </div>
-        ${totalGeral > 0 ? `<span style="font-size:11px;color:var(--text-tertiary);white-space:nowrap">${colaboradores.length} colaborador${colaboradores.length!==1?'es':''}</span>` : ''}
+        ${totalLinha > 0 ? `<span style="font-size:11px;color:var(--text-tertiary);white-space:nowrap">${colaboradores.length} colaborador${colaboradores.length!==1?'es':''}</span>` : ''}
       </div>
-
       <div style="display:flex;gap:10px;margin-top:6px;align-items:stretch">
-
-        <!-- Gráfico -->
         <div style="flex:1;min-width:0">
           <div class="chart-wrap" style="position:relative;height:230px">
             <canvas id="perfchart-${cKey}"></canvas>
           </div>
-          <!-- Total embaixo do gráfico -->
           <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:7px 10px;background:var(--bg-secondary);border-radius:var(--radius-md);border:0.5px solid var(--border)">
             <span style="font-size:10px;color:var(--text-secondary);font-weight:500;text-transform:uppercase;letter-spacing:0.08em">Total itens preparados</span>
-            <span style="font-size:17px;font-weight:700;color:${lineColor};font-variant-numeric:tabular-nums">${fmt(totalGeral)}</span>
+            <span style="font-size:17px;font-weight:700;color:${lineColor};font-variant-numeric:tabular-nums">${fmt(totalLinha)}</span>
           </div>
         </div>
-
-        <!-- Quadrados laterais -->
         <div style="display:flex;flex-direction:column;gap:8px;width:108px;flex-shrink:0">
-
-          <!-- Dentro da meta -->
           <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
                       background:rgba(74,222,128,0.08);border:1.5px solid rgba(74,222,128,0.45);
                       border-radius:10px;padding:10px 6px;text-align:center">
@@ -954,8 +1100,6 @@ function renderPerfGrid(rows, gridId, chartPrefix) {
             <span style="font-size:9px;font-weight:700;color:rgba(74,222,128,0.85);text-transform:uppercase;letter-spacing:0.08em;line-height:1.3">hora${horasDentro!==1?'s':''}<br>dentro da meta</span>
             ${horasComDado.length > 0 ? `<span style="font-size:10px;font-weight:600;color:rgba(74,222,128,0.6);margin-top:2px">${pctDentro}%</span>` : ''}
           </div>
-
-          <!-- Fora da meta -->
           <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
                       background:rgba(248,113,113,0.08);border:1.5px solid rgba(248,113,113,0.45);
                       border-radius:10px;padding:10px 6px;text-align:center">
@@ -963,16 +1107,14 @@ function renderPerfGrid(rows, gridId, chartPrefix) {
             <span style="font-size:9px;font-weight:700;color:rgba(248,113,113,0.85);text-transform:uppercase;letter-spacing:0.08em;line-height:1.3">hora${horasFora!==1?'s':''}<br>fora da meta</span>
             ${horasComDado.length > 0 ? `<span style="font-size:10px;font-weight:600;color:rgba(248,113,113,0.6);margin-top:2px">${100-pctDentro}%</span>` : ''}
           </div>
-
         </div>
       </div>`;
     grids.appendChild(card);
 
     setTimeout(() => {
-      if (totalGeral > 0) {
+      if (totalLinha > 0) {
         drawPerfChart(cKey, lineData, lineColor);
       } else {
-        // Sem dados — desenhar gráfico vazio com placeholder
         const ctx = document.getElementById(`perfchart-${cKey}`);
         if (!ctx) return;
         if (perfCharts[cKey]) { perfCharts[cKey].destroy(); delete perfCharts[cKey]; }
@@ -983,20 +1125,12 @@ function renderPerfGrid(rows, gridId, chartPrefix) {
           type: 'bar',
           data: {
             labels: PERF_HOURS,
-            datasets: [{
-              label: 'Volume (itens)',
-              data: new Array(14).fill(0),
-              borderColor: lineColor + '44',
-              backgroundColor: lineColor + '18',
-              borderWidth: 1,
-            }]
+            datasets: [{ label: 'Volume (itens)', data: new Array(14).fill(0),
+              borderColor: lineColor + '44', backgroundColor: lineColor + '18', borderWidth: 1 }]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: { enabled: false }
-            },
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
             scales: {
               x: { ticks: { color: tickC, font: { size: 10 } }, grid: { color: gridC } },
               y: { ticks: { color: tickC, font: { size: 10 } }, grid: { color: gridC }, beginAtZero: true, max: 10,
@@ -1005,7 +1139,7 @@ function renderPerfGrid(rows, gridId, chartPrefix) {
           }
         });
       }
-    }, 60);
+    }, 80 + li * 20);
   });
 }
 
@@ -1446,6 +1580,365 @@ function renderHcCurrent() {
   if (tab === 'diario')  renderHcDiario(document.getElementById('hc-date-filter').value);
   if (tab === 'semanal') { const v = document.getElementById('hc-week-filter').value;  if (v) renderHcSemanal(v); }
   if (tab === 'mensal')  { const v = document.getElementById('hc-month-filter').value; if (v) renderHcMensal(v); }
+  if (tab === 'tabela')  renderHcTabela();
+}
+
+// ─────────────────────────────────────────────
+//  HC TABELA DE PRESENÇA — grade interativa
+// ─────────────────────────────────────────────
+
+// Estado local da tabela (chave: "SUP|COLAB|dateISO" → status)
+const tabelaState = {};
+const tabelaCharts = {};
+
+function tabelaKey(sup, colab, iso) { return `${sup}|${colab}|${iso}`; }
+
+function tabelaStatusClass(v) {
+  if (!v) return 's-vazio';
+  if (v === 'presente') return 's-presente';
+  if (v === 'falta') return 's-falta';
+  if (v === 'falta_inj') return 's-falta-inj';
+  return 's-vazio';
+}
+
+function tabelaGetStatus(sup, colab, iso) {
+  const k = tabelaKey(sup, colab, iso);
+  // Primeiro verifica estado local (edições manuais)
+  if (k in tabelaState) return tabelaState[k];
+  // Senão, pega do hcRows carregado
+  const dateCols = hcGetDateCols(hcRows);
+  const targetCols = dateCols.filter(c => c.iso === iso).map(c => c.col);
+  const row = hcRows.find(r => {
+    const s = (r['SUPERVISOR'] || Object.values(r)[0] || '').toString().toUpperCase().trim();
+    const c = (r['COLABORADOR'] || r['Colaborador'] || Object.values(r)[1] || '').toString().trim();
+    return s.includes(sup) && c === colab && !hcIsWeekdayRow(r);
+  });
+  if (!row) return null;
+  for (const col of targetCols) {
+    const st = hcStatus(row[col]);
+    if (st) return st;
+  }
+  return null;
+}
+
+function tabelaSetStatus(sup, colab, iso, value) {
+  tabelaState[tabelaKey(sup, colab, iso)] = value || null;
+  updateTabelaCharts();
+  updateTabelaTotals();
+}
+
+// Coleta colaboradores por supervisor do hcRows
+function tabelaGetColabs() {
+  const map = {}; // { 'LUCAS': ['LEANDRA', ...], ... }
+  HC_SUPERVISORS.forEach(s => { map[s.key] = []; });
+  hcRows.forEach(row => {
+    if (hcIsWeekdayRow(row)) return;
+    const supRaw = (row['SUPERVISOR'] || Object.values(row)[0] || '').toString().toUpperCase().trim();
+    const colab  = (row['COLABORADOR'] || row['Colaborador'] || Object.values(row)[1] || '').toString().trim();
+    if (!supRaw || !colab) return;
+    const sup = HC_SUPERVISORS.find(s => supRaw.includes(s.key));
+    if (!sup) return;
+    if (!map[sup.key].includes(colab)) map[sup.key].push(colab);
+  });
+  return map;
+}
+
+function tabelaGetDates() {
+  return hcGetDateCols(hcRows)
+    .reduce((acc, c) => { if (!acc.find(x => x.iso === c.iso)) acc.push(c); return acc; }, [])
+    .sort((a, b) => a.iso.localeCompare(b.iso));
+}
+
+// Computa totais por supervisor e por data
+function tabelaComputeTotals(colabs, dates) {
+  const byDate = {}; // { iso: { pres, falta, inj } }
+  const bySup  = {}; // { supKey: { pres, falta, inj } }
+
+  HC_SUPERVISORS.forEach(s => { bySup[s.key] = { pres:0, falta:0, inj:0 }; });
+  dates.forEach(d => { byDate[d.iso] = { pres:0, falta:0, inj:0 }; });
+
+  HC_SUPERVISORS.forEach(sup => {
+    (colabs[sup.key] || []).forEach(colab => {
+      dates.forEach(d => {
+        const st = tabelaGetStatus(sup.key, colab, d.iso);
+        if (st === 'presente') { byDate[d.iso].pres++; bySup[sup.key].pres++; }
+        else if (st === 'falta_inj') { byDate[d.iso].inj++; bySup[sup.key].inj++; byDate[d.iso].falta++; bySup[sup.key].falta++; }
+        else if (st === 'falta') { byDate[d.iso].falta++; bySup[sup.key].falta++; }
+      });
+    });
+  });
+  return { byDate, bySup };
+}
+
+function updateTabelaTotals() {
+  const colabs = tabelaGetColabs();
+  const dates  = tabelaGetDates();
+  const { byDate, bySup } = tabelaComputeTotals(colabs, dates);
+
+  // Totais por data (rodapé)
+  dates.forEach(d => {
+    const el = document.getElementById(`tfoot-${d.iso}`);
+    if (!el) return;
+    const { pres, falta, inj } = byDate[d.iso];
+    const faltaSimples = falta - inj;
+    el.innerHTML = `
+      <span class="tot-pres" style="display:block">✔ ${pres}</span>
+      ${faltaSimples > 0 ? `<span class="tot-falta" style="display:block">✖ ${faltaSimples}</span>` : ''}
+      ${inj > 0 ? `<span class="tot-inj" style="display:block">◆ ${inj}</span>` : ''}`;
+  });
+
+  // Totais globais no banner
+  const totalPres = HC_SUPERVISORS.reduce((s, sup) => s + bySup[sup.key].pres, 0);
+  const totalFalt = HC_SUPERVISORS.reduce((s, sup) => s + bySup[sup.key].falta, 0);
+  const totalInj  = HC_SUPERVISORS.reduce((s, sup) => s + bySup[sup.key].inj, 0);
+  const elP = document.getElementById('tab-total-pres');
+  const elF = document.getElementById('tab-total-falt');
+  const elI = document.getElementById('tab-total-inj');
+  if (elP) elP.textContent = totalPres;
+  if (elF) elF.textContent = totalFalt;
+  if (elI) elI.textContent = totalInj;
+}
+
+function updateTabelaCharts() {
+  const colabs = tabelaGetColabs();
+  const dates  = tabelaGetDates();
+  const { bySup } = tabelaComputeTotals(colabs, dates);
+
+  HC_SUPERVISORS.forEach((sup, si) => {
+    const d = bySup[sup.key];
+    const faltaSimples = d.falta - d.inj;
+    const ctx = document.getElementById(`tabchart-${si}`);
+    if (!ctx) return;
+
+    if (tabelaCharts[si]) { tabelaCharts[si].destroy(); delete tabelaCharts[si]; }
+
+    const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const hcFixoMap = buildHcFixoMap(hcRows);
+    const fixo = hcFixoMap[sup.key] || (colabs[sup.key] || []).length;
+    const semRegistro = Math.max(0, (colabs[sup.key] || []).length * dates.length - d.pres - d.falta);
+    const hasData = d.pres + d.falta > 0;
+
+    tabelaCharts[si] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Presentes', 'Falta', 'F. Injust.', 'Sem registro'],
+        datasets: [{
+          data: [d.pres, faltaSimples, d.inj, hasData ? 0 : 1],
+          backgroundColor: hasData
+            ? ['rgba(74,222,128,0.8)', 'rgba(248,113,113,0.8)', 'rgba(192,132,252,0.8)', 'rgba(120,120,120,0.1)']
+            : ['rgba(120,120,120,0.15)', 'transparent', 'transparent', 'rgba(120,120,120,0.15)'],
+          borderColor: hasData
+            ? ['rgba(74,222,128,1)', 'rgba(248,113,113,1)', 'rgba(192,132,252,1)', 'transparent']
+            : ['rgba(120,120,120,0.3)', 'transparent', 'transparent', 'rgba(120,120,120,0.3)'],
+          borderWidth: 1.5,
+          hoverOffset: 4,
+        }]
+      },
+      options: {
+        cutout: '65%', responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => c.raw > 0 ? ` ${c.label}: ${c.raw}` : null } }
+        }
+      }
+    });
+  });
+}
+
+function renderHcTabela() {
+  const container = document.getElementById('hc-tabela-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const colabs = tabelaGetColabs();
+  const dates  = tabelaGetDates();
+  const hcFixoMap = buildHcFixoMap(hcRows);
+
+  if (dates.length === 0) {
+    container.innerHTML = '<div class="no-data" style="padding:3rem 0;text-align:center;color:var(--text-tertiary)">Nenhuma data encontrada no CSV do HC.</div>';
+    return;
+  }
+
+  // ── Banner de totais gerais ──
+  const banner = document.createElement('div');
+  banner.className = 'presenca-summary-banner';
+  const totalFixo = HC_SUPERVISORS.reduce((s, sup) => s + (hcFixoMap[sup.key] || (colabs[sup.key]||[]).length), 0);
+  const supBadges = HC_SUPERVISORS.map(sup => {
+    const fixo = hcFixoMap[sup.key] || (colabs[sup.key]||[]).length;
+    return fixo > 0 ? `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px">
+      <span class="sup-badge ${sup.badge}" style="font-size:10px;padding:2px 7px">${sup.key}</span>
+      <span style="font-weight:700;color:var(--text)">${fixo}</span>
+    </span>` : '';
+  }).join('');
+
+  banner.innerHTML = `
+    <div class="pres-total-block">
+      <div class="pres-total-label">HC Total</div>
+      <div class="pres-total-num">${totalFixo || '—'}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${supBadges}</div>
+    </div>
+    <div class="pres-counters">
+      <div class="pres-counter verde"><div class="num" id="tab-total-pres">0</div><div class="lbl">Presentes</div></div>
+      <div class="divider-v"></div>
+      <div class="pres-counter vermelho"><div class="num" id="tab-total-falt">0</div><div class="lbl">Faltantes</div></div>
+      <div class="divider-v"></div>
+      <div class="pres-counter roxo"><div class="num" id="tab-total-inj">0</div><div class="lbl">F. Injust.</div></div>
+    </div>`;
+  container.appendChild(banner);
+
+  // ── Tabela ──
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'card presenca-wrap';
+  tableWrap.style.marginBottom = '16px';
+
+  // Cabeçalho com datas
+  const dateCols = dates.map(d => {
+    const [y,m,dd] = d.iso.split('-');
+    const weekDay = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][new Date(d.iso+'T12:00:00').getDay()];
+    return `<th class="th-date">${dd}/${m}<br><span style="font-size:9px;font-weight:400;opacity:0.7">${weekDay}</span></th>`;
+  }).join('');
+
+  let tbodyRows = '';
+  HC_SUPERVISORS.forEach(sup => {
+    const list = colabs[sup.key] || [];
+    if (!list.length) return;
+    // Linha de separação de supervisor
+    tbodyRows += `<tr class="row-sup-header">
+      <td colspan="${2 + dates.length}" style="padding:5px 10px">
+        <span class="sup-badge ${sup.badge}">${sup.key}</span>
+        <span style="font-size:12px;font-weight:600;color:var(--text);margin-left:6px">${sup.fullName}</span>
+        <span style="font-size:10px;color:var(--text-tertiary);margin-left:8px">${list.length} colaborador${list.length!==1?'es':''}</span>
+      </td>
+    </tr>`;
+    list.forEach(colab => {
+      const dateCells = dates.map(d => {
+        const st = tabelaGetStatus(sup.key, colab, d.iso);
+        const cls = tabelaStatusClass(st);
+        const label = st === 'presente' ? 'PRESENTE' : st === 'falta' ? 'FALTA' : st === 'falta_inj' ? 'FALTA INJ.' : '';
+        return `<td style="padding:0;min-width:130px">
+          <select class="status-select ${cls}"
+            onchange="tabelaSetStatus('${sup.key}','${CSS.escape ? colab.replace(/'/g,"\\'") : colab}','${d.iso}',this.value||null);this.className='status-select '+tabelaStatusClass(this.value||null)"
+            title="${d.iso}">
+            <option value="" ${!st?'selected':''}>—</option>
+            <option value="presente"  ${st==='presente'?'selected':''}>PRESENTE</option>
+            <option value="falta"     ${st==='falta'?'selected':''}>FALTA</option>
+            <option value="falta_inj" ${st==='falta_inj'?'selected':''}>FALTA INJ.</option>
+          </select>
+        </td>`;
+      }).join('');
+      tbodyRows += `<tr>
+        <td class="sup-cell"></td>
+        <td class="col-cell">${colab}</td>
+        ${dateCells}
+      </tr>`;
+    });
+  });
+
+  // Rodapé totais por data
+  const tfootCells = dates.map(d => `<td id="tfoot-${d.iso}" style="padding:4px 6px">—</td>`).join('');
+
+  tableWrap.innerHTML = `
+    <table class="presenca-table">
+      <thead>
+        <tr>
+          <th class="col-sup" style="min-width:10px"></th>
+          <th class="col-col" style="min-width:120px">Colaborador</th>
+          ${dateCols}
+        </tr>
+      </thead>
+      <tbody>${tbodyRows}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" class="tot-label">TOTAIS POR DIA</td>
+          ${tfootCells}
+        </tr>
+      </tfoot>
+    </table>`;
+  container.appendChild(tableWrap);
+
+  // ── Gráficos por supervisor ──
+  const chartsGrid = document.createElement('div');
+  chartsGrid.className = 'presenca-charts';
+  HC_SUPERVISORS.forEach((sup, si) => {
+    if (!(colabs[sup.key]||[]).length) return;
+    const fixo = hcFixoMap[sup.key] || (colabs[sup.key]||[]).length;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-header" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="sup-badge ${sup.badge}">${sup.key}</span>
+          <span class="card-name">${sup.fullName}</span>
+        </div>
+        <span style="font-size:11px;color:var(--text-tertiary)">HC Fixo: <strong style="color:${sup.color}">${fixo}</strong></span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+        <div style="width:110px;height:110px;flex-shrink:0;position:relative">
+          <canvas id="tabchart-${si}" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.06em">HC</div>
+            <div style="font-size:22px;font-weight:800;color:${sup.color};line-height:1">${fixo}</div>
+          </div>
+        </div>
+        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="padding:8px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.35);border-radius:8px;text-align:center">
+            <div id="tabcard-pres-${si}" style="font-size:22px;font-weight:800;color:#4ade80;line-height:1">0</div>
+            <div style="font-size:9px;font-weight:700;color:rgba(74,222,128,0.8);text-transform:uppercase;margin-top:3px">Presentes</div>
+          </div>
+          <div style="padding:8px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.35);border-radius:8px;text-align:center">
+            <div id="tabcard-falt-${si}" style="font-size:22px;font-weight:800;color:#f87171;line-height:1">0</div>
+            <div style="font-size:9px;font-weight:700;color:rgba(248,113,113,0.8);text-transform:uppercase;margin-top:3px">Faltantes</div>
+          </div>
+          <div style="padding:8px;background:rgba(192,132,252,0.08);border:1px solid rgba(192,132,252,0.35);border-radius:8px;text-align:center">
+            <div id="tabcard-inj-${si}" style="font-size:22px;font-weight:800;color:#c084fc;line-height:1">0</div>
+            <div style="font-size:9px;font-weight:700;color:rgba(192,132,252,0.8);text-transform:uppercase;margin-top:3px">F. Injust.</div>
+          </div>
+          <div style="padding:8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;text-align:center">
+            <div id="tabcard-pct-${si}" style="font-size:22px;font-weight:800;color:var(--text);line-height:1">—</div>
+            <div style="font-size:9px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;margin-top:3px">% presença</div>
+          </div>
+        </div>
+      </div>`;
+    chartsGrid.appendChild(card);
+  });
+  container.appendChild(chartsGrid);
+
+  // Aguarda DOM e renderiza charts + totais
+  setTimeout(() => {
+    updateTabelaCharts();
+    updateTabelaTotalsDetailed();
+    updateTabelaTotals();
+  }, 80);
+}
+
+function updateTabelaTotalsDetailed() {
+  const colabs = tabelaGetColabs();
+  const dates  = tabelaGetDates();
+  const { bySup } = tabelaComputeTotals(colabs, dates);
+
+  HC_SUPERVISORS.forEach((sup, si) => {
+    const d = bySup[sup.key];
+    const faltaSimples = d.falta - d.inj;
+    const total = d.pres + d.falta;
+    const pct = total > 0 ? Math.round(d.pres / total * 100) : null;
+    const ep = document.getElementById(`tabcard-pres-${si}`);
+    const ef = document.getElementById(`tabcard-falt-${si}`);
+    const ei = document.getElementById(`tabcard-inj-${si}`);
+    const epc = document.getElementById(`tabcard-pct-${si}`);
+    if (ep) ep.textContent = d.pres;
+    if (ef) ef.textContent = faltaSimples;
+    if (ei) ei.textContent = d.inj;
+    if (epc) epc.textContent = pct !== null ? pct + '%' : '—';
+  });
+}
+
+// Override tabelaSetStatus to also refresh detailed cards
+const _origTabelaSetStatus = tabelaSetStatus;
+function tabelaSetStatus(sup, colab, iso, value) {
+  tabelaState[tabelaKey(sup, colab, iso)] = value || null;
+  updateTabelaCharts();
+  updateTabelaTotals();
+  updateTabelaTotalsDetailed();
 }
 
 function loadHcData(silent) {
